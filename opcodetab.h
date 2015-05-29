@@ -1,11 +1,8 @@
-/*  opcodetab.h
-	CS530, Spring 2014
-*/
-
-/*	Julius Inocencio, Ehsan Eshragh, Travis Barre, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
+	opcodetab.h
 	CS530, Spring 2014
 */
 
@@ -13,7 +10,6 @@
 #define OPCODETAB_H
 
 #include "opcode_error_exception.h"
-
 #include <string>
 #include <map>
 
