@@ -1,7 +1,8 @@
-/*	Travis Barre, Ehsan Eshragh, Julius Inocencio, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
+	symtab.cc
 	CS530, Spring 2014
 */
 
@@ -17,7 +18,7 @@ symtab::symtab() {}
 // takes a user-defined label and returns the address
 // which is associated with the label
 string symtab::get_address(string s){
-	if(symbol_exists(s))
+	if(symbol_exists(to_uppercase(s)))
 		return symbol_map[to_uppercase(s)];
 	else
 		throw symtab_exception("- Symbol " + s + " has not been defined");
@@ -27,8 +28,9 @@ bool symtab::symbol_exists(string s){
 	return !(symbol_map.find(to_uppercase(s)) == symbol_map.end());
 }
 
-void symtab::add_symbol(int x, string symbol, string opcode, string operand){	
+void symtab::add_symbol(unsigned int lc, string symbol, string opcode, string operand){	
 	string address;
+	
 	if (to_uppercase(opcode) == "EQU") {
 		if (operand[0] == '$') {
 			check_hex(operand.erase(0,1));
@@ -48,9 +50,9 @@ void symtab::add_symbol(int x, string symbol, string opcode, string operand){
 	else if(symbol_exists(symbol))
 		throw symtab_exception("- Cannot define " + symbol + " more than once");
 	else
-		address = x;
+		address = int_to_str(lc);
 		
-	symbol_map[to_uppercase(symbol)] = address;
+	symbol_map[to_uppercase(symbol)] = to_uppercase(address);
 }
 
 void symtab::edit_symbol(string label) {

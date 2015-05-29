@@ -1,7 +1,8 @@
-/*	Travis Barre, Ehsan Eshragh, Julius Inocencio, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
+	symtab.h
 	CS530, Spring 2014
 */
 
@@ -25,7 +26,7 @@ class symtab {
 		
 		string get_address(string);
 		bool symbol_exists(string);
-		void add_symbol(int, string, string, string);
+		void add_symbol(unsigned int, string, string, string);
 		void edit_symbol(string);
 	private:
 		map <string, string > symbol_map;

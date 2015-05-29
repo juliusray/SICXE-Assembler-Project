@@ -1,4 +1,4 @@
-/*	Travis Barre, Ehsan Eshragh, Julius Inocencio, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
