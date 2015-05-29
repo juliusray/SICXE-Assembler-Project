@@ -1,7 +1,8 @@
-/*	Julius Inocencio, Ehsan Jahromi, Travis Barre, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
+	sicxe_asm.cpp
 	CS530, Spring 2014
 */
 
@@ -54,7 +55,7 @@ void sicxe_asm::second_pass(file_parser parser) {
 		string curr_label = parser.get_token(x, 0);
 		string curr_opcode = parser.get_token(x, 1);
 		string curr_operand = parser.get_token(x, 2);
-		if(curr_label != "") {
+		if(curr_opcode != "") {
 			if(to_uppercase(curr_opcode) == "BASE") 
 				base = handle_base(curr_operand, x);
 			else if(to_uppercase(curr_opcode) == "NOBASE") 
@@ -102,6 +103,7 @@ unsigned int sicxe_asm::handle_directive(unsigned int x, int& base, string curr_
 				size = size_of_byte_dir(to_uppercase(curr_operand), x + 1);
 			else if(to_uppercase(curr_opcode) == "WORD")
 				size = 3;
+			//if we don't have to handle change check_num back to void
 			else if(to_uppercase(curr_opcode) == "RESB") {
 				valid_operand(curr_operand, x);
 				size = str_to_int(curr_operand);
@@ -169,6 +171,7 @@ void sicxe_asm::insert_listing(unsigned int lc, string label, string opcode, str
 
 string sicxe_asm::machine_code(unsigned int x, string opcode, string operand) {
 	unsigned int opcode_machine_code = 0;
+	unsigned int ni = 0;
 	bool indirect = false;
 	try {
 		opcode_machine_code = hex_to_int(optab.get_machine_code(opcode));
@@ -176,7 +179,11 @@ string sicxe_asm::machine_code(unsigned int x, string opcode, string operand) {
 		cout << "**Sorry, error " << e.getMessage() << " at line " << x + 1 << endl;
 		error = true;
 	}
-	unsigned int ni;
+	
+	if (optab.get_instruction_size(opcode) == 1)
+		return int_to_hex(opcode_machine_code, 2);
+	if (optab.get_instruction_size(opcode) == 2)
+		return int_to_hex(opcode_machine_code, 2) + format2(operand, x);
 
 	if(operand[0] == '@') {
 		ni = 2;
@@ -187,7 +194,16 @@ string sicxe_asm::machine_code(unsigned int x, string opcode, string operand) {
 		indirect = true;
 	} else
 		ni = 3;
+		
+	if(operand[0] == '$') {
+		stringstream stream;
+		check_hex(operand.erase(0,1), x);
+		stream << hex_to_int(operand);
+		stream >> operand;
+	}
+		
 	opcode_machine_code = opcode_machine_code | ni;
+	
 	return int_to_hex(opcode_machine_code, 2) + set_last(x, opcode, operand, indirect);
 }
 
@@ -202,24 +218,31 @@ string sicxe_asm::set_last(unsigned int linenum, string opcode, string operand, 
 		cout << "**Sorry, error " << e.getMessage() << " at line " << linenum + 1 << endl;
 		error = true;
 	}
-	unsigned int comma = operand.find_first_of(",");
-	if (to_uppercase(operand)[comma+1] == 'X') {
-		operand.erase(comma, 2);
-		bit += 8;
-	}
 	if (size == 4) {
 		bit += 1;
-		s = format4(operand, linenum);
+		s = format4(operand, linenum, bit);
 	} else if (size == 3)
 		s = format3(operand, linenum, bit, indirect);
-	
 	return int_to_hex(bit, 1) + s;
 }
 
-string sicxe_asm::format4(string operand, unsigned int linenum) {
-	int address = 0; 
+string sicxe_asm::format4(string operand, unsigned int linenum, int& bit) {
+	int address = 0;
+	pair<string, string> p;
+	
+	if(operand.find(",") != string::npos) {
+		p = split_string(operand, ",");
+		operand = p.first;
+		bit += 8;
+		if (to_uppercase(p.second) != "X") {
+			cout << "**Sorry, error - expected 'X' after ',' at line " << linenum + 1 << endl;
+			error = true;
+		}
+	}
+	
 	if (check_numeric(operand))
 		address = str_to_int(operand);
+
 	else 
 		address = str_to_int(get_label(operand, linenum));
 	return int_to_hex(address, 5);
@@ -227,22 +250,73 @@ string sicxe_asm::format4(string operand, unsigned int linenum) {
 
 string sicxe_asm::format3(string operand, unsigned int linenum, int& bit, bool indirect) {
 	int source = hex_to_int(listing_file[linenum].address);
+	int dest = 0;
 	int offset = 0;
-	if (indirect)
-		return int_to_hex(str_to_int(operand), 3);
+	pair<string, string> p;
+	
+	if(operand.find(",") != string::npos) {
+		p = split_string(operand, ",");
+		operand = p.first;
+		bit += 8;
+		if (to_uppercase(p.second) != "X") {
+			cout << "**Sorry, error - expected 'X' after ',' at line " << linenum + 1 << endl;
+			error = true;
+		}
+	}
+	if (indirect) {
+		if (check_numeric(operand))
+			return int_to_hex(str_to_int(operand), 3);
+		else
+			dest = hex_to_int(get_label(operand, linenum));
+	}
 	if (check_numeric(operand))
-		offset = str_to_int(operand);
-	else 
-		offset = str_to_int(get_label(operand, linenum));
-	offset = (offset - source + 3); 
+		dest = str_to_int(operand);
+	else
+		dest = str_to_int(get_label(operand, linenum));
+	offset = dest - (source + 3);
 	if (offset < -2048 || offset > 2047) {
-		if (base == -1 || offset > 4095 || offset < 0)
-			cout << offset << endl;
+		if (base == -1 || offset > 4095 || offset < 0) {
 			cout << "**Sorry, error - offset is too big at line " << linenum + 1 << endl;
-			bit += 4;	
+			error = true;
+		}
+		bit += 4;
+		offset = dest - base;
 	} else 
 		bit += 2;
 	return int_to_hex(offset, 3);
+}
+
+string sicxe_asm::format2(string operand, unsigned int linenum) {
+	pair<string,string> p;
+	string op1 = "";
+	string op2 = "";
+	
+	if(operand.find(",") != string::npos) {
+		p = split_string(operand, ",");
+		op1 = p.first;
+		op2 = p.second;
+	}
+	else if (check_numeric(operand))
+		return int_to_hex(str_to_int(operand),1) + "0";
+	else
+		op1 = operand;
+		
+	if (check_numeric(op2) && op2 != "") {
+		op1 = register_map[to_uppercase(op1)];
+		op2 = int_to_hex(str_to_int(op2), 1);
+	} else if (op2[0] == '$') {
+		op1 = register_map[to_uppercase(op1)];
+		check_hex(op2.erase(0,1), linenum);
+	} else if (register_map.find(to_uppercase(op1)) == register_map.end() ||
+			register_map.find(to_uppercase(op2)) == register_map.end()) {
+			cout << "**Sorry, error - illegal operand at line " << linenum + 1 << endl;
+			error = true;
+	} else {
+		op1 = register_map[to_uppercase(op1)];
+		op2 = register_map[to_uppercase(op2)];
+	}
+	
+	return op1+op2;
 }
 
 string sicxe_asm::get_label(string label, unsigned int x) {
@@ -270,20 +344,20 @@ void sicxe_asm::print_listing_file(unsigned int x) {
 
 	outFile  << "**" << file << "**" << endl
 		<< "Line#" << setw(10) << "Address" << setw(10) << "Label" << setw(10)
-		<< "Opcode" << setw(10) << "Operand" << setw(15) << "Machine Code" << endl
+		<< "Opcode" << setw(10) << "Operand" << setw(20) << "Machine Code" << endl
 		<< "=====" << setw(10) << "=======" << setw(10) << "=====" << setw(10)
-		<< "======"	<< setw(10) << "=======" << setw(15) << "============" << endl;
+		<< "======"	<< setw(10) << "=======" << setw(20) << "============" << endl;
 	
 	for (unsigned int i = 0; i <= x; i++) {
 		outFile << setw(5) << right << i+1 << setw(5) << " "
 		<< setw(10) << left << listing_file[i].address
 		<< setw(10) << listing_file[i].label
 		<< setw(10) << listing_file[i].opcode
-		<< setw(10) << listing_file[i].operand 
+		<< setw(15) << listing_file[i].operand 
 		<< setw(15) << listing_file[i].machine_code << endl;
 	}
 	
-	cout << "\nCompiling successful, .lis file created\n" << endl;
+	cout <<"\nCompile successful, .lis file created\n" << endl;
 }
 
 bool sicxe_asm::is_assembler_directive(string s) {
@@ -339,5 +413,15 @@ int sicxe_asm::hex_to_int(string s){
 string sicxe_asm::int_to_hex(int num, unsigned int size){
 	stringstream out;
 	out << setw(size) << setfill('0') << hex << num;
-	return to_uppercase(out.str());
+	string s = out.str();
+	return to_uppercase(s.substr(s.length()-size));
+}
+
+pair<string,string> sicxe_asm::split_string(string s, string f) {
+	unsigned int pos = s.find(f);
+	pair<string,string> p;
+	
+	p.first = s.substr(0,pos);
+	p.second = s.substr(pos+1);
+	return p;
 }

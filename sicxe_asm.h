@@ -1,7 +1,8 @@
-/*	Travis Barre, Ehsan Eshragh, Julius Inocencio, Michael Reese
+/*	Travis Barre, Julius Inocencio, Ehsan Eshragh, Michael Reese
 	Team Oregon
 	masc1187
 	prog4
+	sicxe_asm.h
 	CS530, Spring 2014
 */
 
@@ -16,8 +17,11 @@
 
 #define NUM_OF_DIRECTIVES 9
 #define LENGTH_OF_ADDRESS 5
+#define NUM_OF_REGISTERS 10
 
 const string assemblerdirs[] = { "START", "END", "BYTE", "WORD", "RESB", "RESW", "BASE", "NOBASE", "EQU" };
+const string registers[] = {"A", "X", "L", "B", "S", "T", "F", "PC", "SW", ""};
+const string reg_vals[] = {"0", "1", "2", "3", "4", "5", "6", "8", "9", "0"};
 
 using namespace std;
 
@@ -26,6 +30,10 @@ class sicxe_asm {
 		sicxe_asm(string filename) {
 				file = filename;
 				error = false;
+				
+				for (int i = 0; i < NUM_OF_REGISTERS; i++)
+					register_map[registers[i]] = reg_vals[i];
+				
 			try {
 				file_parser parser(filename);
 				parser.read_file();
@@ -55,6 +63,7 @@ class sicxe_asm {
 		opcodetab optab;
 		symtab symbol_tab;
 		vector<listing> listing_file;
+		map<string, string> register_map;
 		string file;
 		bool error;
 		int base;
@@ -70,8 +79,9 @@ class sicxe_asm {
 		void insert_listing(unsigned int, string, string, string);
 		string machine_code(unsigned int, string, string);
 		string set_last(unsigned int, string, string, bool);
-		string format4(string, unsigned int);
+		string format4(string, unsigned int, int&);
 		string format3(string, unsigned int, int&, bool);
+		string format2(string, unsigned int);
 		string get_label(string, unsigned int);
 		
 		void print_listing_file(unsigned int);
@@ -83,6 +93,7 @@ class sicxe_asm {
 		int str_to_int(string);
 		int hex_to_int(string);
 		string int_to_hex(int, unsigned int);
+		pair<string,string> split_string(string, string);
 };
 
 #endif
